@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.HudsonSuth/will-it-run",
+  "title": "Will It Run?",
+  "description": "Check if a local LLM fits your GPU or Mac: memory, best quant, offload and speed.",
+  "websiteUrl": "https://willitrunllm.com/mcp/",
+  "repository": {
+    "url": "https://github.com/HudsonSuth/Will-it-run-mcp-public-",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://willitrunllm.com/api/mcp"
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+[
+  {
+    "name": "search_hardware",
+    "description": "Find GPUs, Apple Silicon Macs and unified-memory machines (Strix Halo, DGX/RTX Spark) the Will It Run? checker knows, with memory, GPU-usable memory and bandwidth. Use the returned id as `hw` in check_fit / what_fits.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Words to match, any order, e.g. \"3090\", \"m4 max 128\", \"strix\". Empty = all."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "gpu",
+            "mac",
+            "unified-apu"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max results (default 25, max 200)."
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "search_models",
+    "description": "Find open-weight LLMs in the Will It Run? database (params, MoE, release date, max context). Use the returned slug as `model` in check_fit.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Words to match in name/slug/HF repo, e.g. \"qwen 32b\", \"deepseek\"."
+        },
+        "include_old": {
+          "type": "boolean",
+          "description": "Include older/legacy models."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max results (default 25, max 200)."
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "check_fit",
+    "description": "Will this model run on this hardware? Returns verdict (fits / tight / offload / no), memory needed vs GPU-usable memory (estimates), placement for RAM offload (MoE experts-to-RAM like llama.cpp --cpu-moe, or layer split), measured or estimated generation speed, and a checker deep link. Give `model` (slug) OR `hf` + `file` (any Hugging Face GGUF repo/file, sized from the real file). Omit `quant` to get the best quant that fits.",
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "hw"
+      ],
+      "properties": {
+        "hw": {
+          "type": "string",
+          "description": "Hardware id(s) from search_hardware. Comma-separate for multi-GPU, e.g. \"rtx-3090,rtx-3090\". Custom VRAM: \"custom-48\" (48 GB, no specific card) or \"rtx-3090:30\" (that card's chip with 30 GB)."
+        },
+        "model": {
+          "type": "string",
+          "description": "Model slug from search_models."
+        },
+        "hf": {
+          "type": "string",
+          "description": "Hugging Face GGUF repo, e.g. \"unsloth/Qwen3.6-35B-A3B-GGUF\"."
+        },
+        "file": {
+          "type": "string",
+          "description": "GGUF file name in that repo (split files: the name without -0000N-of-0000M). Omit to list files."
+        },
+        "quant": {
+          "type": "string",
+          "description": "Quant for `model`, e.g. Q4_K_M, IQ4_XS, Q8_0, F16. Omit for best fit."
+        },
+        "minq": {
+          "type": "string",
+          "enum": [
+            "all",
+            "q3",
+            "q4",
+            "q5",
+            "q8"
+          ],
+          "description": "Lowest quant allowed when picking best fit (default all)."
+        },
+        "ram": {
+          "type": "number",
+          "description": "System RAM in GB available for offload (discrete GPUs only). Default 0 = no offload."
+        },
+        "rambw": {
+          "type": "number",
+          "description": "RAM bandwidth in GB/s for offload speed estimates. One of: 25.6, 29.9, 51.2, 59.7, 25, 50, 80, 102.4, 153.6, 204.8, 307.2, 460.8, 576. Default 50."
+        },
+        "ctx": {
+          "type": "integer",
+          "description": "Context length in tokens. Default 4096."
+        },
+        "kv": {
+          "type": "string",
+          "enum": [
+            "f16",
+            "q8_0",
+            "q4_0"
+          ],
+          "description": "KV-cache type. Default f16."
+        },
+        "engram": {
+          "type": "string",
+          "enum": [
+            "resident",
+            "offload"
+          ],
+          "description": "DeepSeek V4.1 Engram table: resident in GPU memory (default) or offloaded to RAM/disk."
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "what_fits",
+    "description": "List the models that fit on this hardware (best quant each), fully on GPU first, then with RAM offload, biggest first. Includes speed where known and checker deep links.",
+    "inputSchema": {
+      "type": "object",
+      "required": [
+        "hw"
+      ],
+      "properties": {
+        "hw": {
+          "type": "string",
+          "description": "Hardware id(s) from search_hardware. Comma-separate for multi-GPU, e.g. \"rtx-3090,rtx-3090\". Custom VRAM: \"custom-48\" (48 GB, no specific card) or \"rtx-3090:30\" (that card's chip with 30 GB)."
+        },
+        "minq": {
+          "type": "string",
+          "enum": [
+            "all",
+            "q3",
+            "q4",
+            "q5",
+            "q8"
+          ],
+          "description": "Lowest quant allowed (default q3 = IQ3_XXS or better)."
+        },
+        "include_old": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max models (default 30)."
+        },
+        "ram": {
+          "type": "number",
+          "description": "System RAM in GB available for offload (discrete GPUs only). Default 0 = no offload."
+        },
+        "rambw": {
+          "type": "number",
+          "description": "RAM bandwidth in GB/s for offload speed estimates. One of: 25.6, 29.9, 51.2, 59.7, 25, 50, 80, 102.4, 153.6, 204.8, 307.2, 460.8, 576. Default 50."
+        },
+        "ctx": {
+          "type": "integer",
+          "description": "Context length in tokens. Default 4096."
+        },
+        "kv": {
+          "type": "string",
+          "enum": [
+            "f16",
+            "q8_0",
+            "q4_0"
+          ],
+          "description": "KV-cache type. Default f16."
+        },
+        "engram": {
+          "type": "string",
+          "enum": [
+            "resident",
+            "offload"
+          ],
+          "description": "DeepSeek V4.1 Engram table: resident in GPU memory (default) or offloaded to RAM/disk."
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_benchmarks",
+    "description": "Measured community llama.cpp benchmarks (tg128 = generation tok/s, pp512 = prompt tok/s), each with its source link. Filter by hardware id, model slug and/or quant.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "hw": {
+          "type": "string",
+          "description": "Single hardware id."
+        },
+        "model": {
+          "type": "string",
+          "description": "Model slug (or benchmark key such as llama2-7b)."
+        },
+        "quant": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Max rows (default 50, max 500)."
+        }
+      }
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "openWorldHint": false
+    }
+  }
+]
